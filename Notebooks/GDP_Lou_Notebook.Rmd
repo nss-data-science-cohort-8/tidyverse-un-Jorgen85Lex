@@ -15,7 +15,11 @@ library(ggplot2)
 1. Using the `read_csv()` function, read the GDP dataset into your notebook as a tibble called `gdp_df`. After reading it in, inspect the first 10 rows and then inspect the last 10 rows. 
 
 ```{r}
-gdp_df <- read.csv("../Documents/NSS_Projects/tidyverse-un-Jorgen85Lex/data/gdp_per_capita.csv")
+gdp_df <- read_csv("../data/gdp_per_capita.csv")
+```
+
+
+```{r}
 head(gdp_df, 10)
 tail(gdp_df, 10)
 ```
@@ -25,9 +29,9 @@ tail(gdp_df, 10)
 gdp_df <- gdp_df |> select(1,2,3)
 head(gdp_df, 2)
 ```
+
 ```{r}
-gdp_df <- gdp_df |> rename(Country = Country.or.Area,
-                 GDP_Per_Capita = Value)
+gdp_df <- gdp_df |> rename(Country = 'Country or Area', GDP_Per_Capita = Value)
 head(gdp_df, 2)
 ```
 3. Which years are represented in this dataset? How many observations are there per year? Make a plot to view the number of observations per year.
@@ -99,7 +103,14 @@ gdp_2021 |>
 9. Now, return to the full dataset, `gdp_df`. Pivot the data for 1990 and 2021 (using `pivot_wider()` function) so that each row corresponds to a country, each column corresponds to a year, and the values in the table give the GDP_Per_Capita amount. Drop any rows that are missing values for either 1990 or 2021. Save the result to a tibble named `gdp_pivoted`.
 
 ```{r}
-gdp_pivoted -> gdp_df |> 
+for_pivot <- gdp_df |> 
+  filter(Year %in% c(2021, 1990))
+for_pivot
+```
+
+
+```{r}
+gdp_pivoted <- for_pivot |> 
   pivot_wider(
     names_from = Year,
     values_from = GDP_Per_Capita
@@ -107,8 +118,103 @@ gdp_pivoted -> gdp_df |>
 
 gdp_pivoted
 ```
+```{r}
+gdp_pivoted <- gdp_pivoted |> 
+  drop_na() |> 
+  rename(year_2021 = '2021', year_1990 = '1990')
 
+gdp_pivoted
+```
+10. Create a new column in `gdp_pivoted` named `Percent_Change`. This column should contain the percent change in GDP_Per_Capita from 1990 to 2021. Hint: Percent change is calculated as 100*(New Value - Old Value) / Old Value.
 
+```{r}
+gdp_pivoted <- gdp_pivoted |> 
+  mutate(Percent_Change = 100* (year_2021-year_1990)/year_1990)
+
+gdp_pivoted
+```
+11. How many countries experienced a negative percent change in GDP per capita from 1990 to 2021?
+
+```{r}
+gdp_pivoted |>
+  filter(Percent_Change < 0)
+```
+19 Rows experienced a negative percent change from 1990 to 2021
+
+12. Which country had the highest % change in GDP per capita? Create a line plot showing these country's GDP per capita for all years for which you have data. Put both line charts on the same plot.
+
+```{r}
+gdp_pivoted |> 
+  top_n(2, Percent_Change)
+```
+```{r}
+EGC <- gdp_df |> 
+  select(Country, GDP_Per_Capita, Year) |> 
+  filter(Country %in% c('Equatorial Guinea', 'China'))
+
+EGC
+           
+```
+```{r}
+ggplot(EGC, aes(x=Year, y = GDP_Per_Capita, color=Country)) +
+  geom_line()
+```
+13. Read in continents.csv contained in the `data` folder into a new tibble called `continents`. We will be using this tibble to add a new column to our dataset.
+
+```{r}
+continents <- read_csv("../data/continents.csv")
+continents
+```
+
+14. Merge gdp_df and continents. Keep only the countries that appear in both data frames. Save the result back to gdp_df.
+
+```{r}
+gdp_df<- inner_join(gdp_df, continents)
+
+gdp_df
+```
+15. Determine the number of countries per continent. Create a bar chart showing this.
+
+```{r}
+countries_per_continents_chart<-gdp_df |>
+  group_by(Continent) |> 
+  summarise(countries_per_continent = n())
+  
+countries_per_continents_chart
+```
+
+```{r}
+ggplot(countries_per_continents_chart, aes(x= Continent, y= countries_per_continent)) +
+  geom_col()
+```
+16. Create a boxplot showing GDP per capita in 2021 split out by continent. What do you notice?
+
+```{r}
+boxplot <- gdp_df |>
+  filter(Year== 2021)
+
+boxplot
+  
+```
+```{r}
+ggplot(boxplot, aes(x = Continent, y = GDP_Per_Capita)) +
+  geom_boxplot()
+```
+Europe has the highest GDP per capita while Africa has the lowest. There are outliers in every country except for South America. 
+
+17. Read life_expectancy.csv into a tibble named life_expectancy. Do not modify the csv file in order to read this data in.
+
+```{r}
+life_expectancy <- read_csv("../data/life_expectancy.csv")
+life_expectancy
+```
+
+18. Drop the Country Code, Indicator Name, and Indicator Code columns. Then use `pivot_longer` to convert your data from wide to long. That is, instead of having one row per country and multiple colums per year, we want to have multiple rows per country and a single column for year. After melting, rename the columns to `Country`, `Year`, and `Life_Expectancy`.
+
+```{r}
+life_expectancy |> 
+  select(!Country Code, !Indicator Name, !Indicator Code)
+```
 
 
 Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
