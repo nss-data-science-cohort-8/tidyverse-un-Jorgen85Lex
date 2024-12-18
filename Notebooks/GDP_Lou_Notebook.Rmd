@@ -205,16 +205,144 @@ Europe has the highest GDP per capita while Africa has the lowest. There are out
 17. Read life_expectancy.csv into a tibble named life_expectancy. Do not modify the csv file in order to read this data in.
 
 ```{r}
-life_expectancy <- read_csv("../data/life_expectancy.csv")
+life_expectancy <- read_csv("../data/life_expectancy.csv", skip =3)
 life_expectancy
 ```
 
-18. Drop the Country Code, Indicator Name, and Indicator Code columns. Then use `pivot_longer` to convert your data from wide to long. That is, instead of having one row per country and multiple colums per year, we want to have multiple rows per country and a single column for year. After melting, rename the columns to `Country`, `Year`, and `Life_Expectancy`.
+18. Drop the Country Code, Indicator Name, and Indicator Code columns. Then use `pivot_longer` to convert your data from wide to long. That is, instead of having one row per country and multiple columns per year, we want to have multiple rows per country and a single column for year. After melting, rename the columns to `Country`, `Year`, and `Life_Expectancy`.
+
+```{r}
+life_expectancy <- life_expectancy |> 
+  select(-contains("Country Code"), -contains("Indicator Name"), -contains("Indicator Code")) |> 
+  rename(Country = `Country Name`)
+
+life_expectancy
+```
+
+```{r}
+life_expectancy <- pivot_longer(life_expectancy, !`Country`, names_to = "Year", values_to = "Life_Expectancy")
+
+life_expectancy
+```
+19. What was the first country with a life expectancy to exceed 80?
 
 ```{r}
 life_expectancy |> 
-  select(!Country Code, !Indicator Name, !Indicator Code)
+  filter(Life_Expectancy >= 80) |> 
+  arrange(Year) |> 
+  head(1)
 ```
+
+20. Merge `gdp_df` and `life_expectancy`, keeping all countries and years that appear in both tibbles. Save the result to a new tibble named `gdp_le`. If you get any errors in doing this, read them carefully and correct them. Look at the first five rows of your new data frame to confirm it merged correctly. Also, check the last five rows to make sure the data is clean and as expected.
+
+```{r}
+life_expectancy <- life_expectancy |> 
+  mutate(Year = as.numeric(Year)) |> 
+  drop_na(Year)
+```
+
+
+
+```{r}
+gdp_le <- gdp_df |>
+  full_join(life_expectancy, by = c('Country', 'Year'))
+
+head(gdp_le,5)
+tail(gdp_le, 5)
+```
+
+21. Create a new tibble, named `gdp_le_2021` by extracting data for the year 2021 from `gdp_le`. How many countries have a life expectancy of at least 80 in 2021?
+
+```{r}
+gdp_le_2021 <- gdp_le |>
+  filter(Year == 2021) |> 
+  filter(Life_Expectancy >= 80)
+
+gdp_le_2021
+```
+40 countries have a life expectancy of at least 80.
+
+22. Find the countries that had the top 3 largest GDP per capita figures for 2021. Create a plot showing the change in life expectancy over time for these three countries. This plot should be faceted so that each country is contained in its own figure.
+
+```{r}
+gdp_le_largest <- gdp_le |> 
+  filter(Year == 2021) |>
+  top_n(3, GDP_Per_Capita) |> 
+  pull(Country)
+
+gdp_le_largest
+  
+```
+
+```{r}
+gdp_le_largest_life_expectancy <- gdp_le |> 
+  filter(Country %in% gdp_le_largest) |> 
+  drop_na(Year, Life_Expectancy)
+```
+
+
+```{r}
+ggplot(gdp_le_largest_life_expectancy, aes(x = Year, y= Life_Expectancy))+
+  geom_line()+
+  facet_wrap(~Country)+
+  labs(
+    title = "Change of Life Expectancy Over Time",
+    x = "Year",
+    y = "Life Expectancy"
+  )
+```
+23. Create a scatter plot of Life Expectancy vs GDP per Capita for the year 2021. What do you notice?
+
+```{r}
+gdp_le_2021 <- gdp_le_2021 |> 
+  drop_na(GDP_Per_Capita, Life_Expectancy)
+```
+
+```{r}
+ggplot(gdp_le_2021, aes(x = GDP_Per_Capita, y= Life_Expectancy))+
+geom_point()+
+  labs(
+    title = "Life Expectancy vs. GDP per Capita for 2021",
+    x= "GDP per Capita",
+    y = "Life Expectancy"
+  )
+```
+24. Find the correlation between Life Expectancy and GDP per Capita for the year 2021. What is the meaning of this number?
+
+```{r}
+correlation <- cor(gdp_le_2021$GDP_Per_Capita, gdp_le_2021$Life_Expectancy)
+
+correlation
+```
+
+There is a slightly positive correlation for GDP and Life Expectancy. It's a positive 0.313 suggesting there is a relatively weak, however positive correlation between GDP and life expectancy. 
+
+25. Add a column to `gdp_le_2021` and calculate the logarithm of GDP per capita. Find the correlation between the log of GDP per capita and life expectancy. How does this compare to the calculation in the previous part? Look at a scatter plot to see if the result of this calculation makes sense.
+
+```{r}
+gdp_le_2021 <- gdp_le_2021 |> 
+  mutate(log_gdp_per_capita = log(GDP_Per_Capita))
+
+gdp_le_2021
+```
+
+```{r}
+correlation_log <- cor(gdp_le_2021$log_gdp_per_capita, gdp_le_2021$Life_Expectancy)
+
+correlation_log
+```
+It's relatively similar actually. Still a weak positive correlation. 
+
+```{r}
+ggplot(gdp_le_2021, aes(x = log_gdp_per_capita, y= Life_Expectancy))+
+geom_point()+
+  labs(
+    title = "Life Expectancy vs. Log of GDP per Capita for 2021",
+    x= "Log of GDP per Capita",
+    y = "Life Expectancy"
+  )
+```
+
 
 
 Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
